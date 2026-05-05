@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: mcp-server
+
+jira:
+  url: ${JIRA_URL:https://your-jira-instance.atlassian.net}
+  username: ${JIRA_USERNAME:your-email@example.com}
+  api-token: ${JIRA_API_TOKEN:your-api-token}
+
