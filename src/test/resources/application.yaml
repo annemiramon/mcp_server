@@ -1,0 +1,18 @@
+spring:
+  main:
+    web-application-type: none
+    banner-mode: off
+  application:
+    name: mcp_server
+  ai:
+    mcp:
+      server:
+        name: mon_serveur_mcp
+        version: 0.0.1
+        stdio: true
+
+jira:
+  url: https://url_jira.atlassian.net}
+  username: username@gmail.com
+  api-token: mon_token_api_jira
+

@@ -105,9 +105,10 @@ public class WeatherService {
 					%s:
 					Temperature: %s %s
 					Wind: %s %s
+					%s
 					Forecast: %s
 					""", p.name(), p.temperature(), p.temperatureUnit(), p.windSpeed(), p.windDirection(),
-					p.detailedForecast());
+					p.shortForecast(), p.detailedForecast());
 		}).collect(Collectors.joining());
 
 		return forecastText;
