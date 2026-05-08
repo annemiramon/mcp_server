@@ -1,9 +1,18 @@
 spring:
+  main:
+    web-application-type: none
+    banner-mode: off
   application:
-    name: mcp-server
+    name: mcp_server
+  ai:
+    mcp:
+      server:
+        name: mon_serveur_mcp
+        version: 0.0.1
+        stdio: true
 
 jira:
-  url: ${JIRA_URL:https://your-jira-instance.atlassian.net}
-  username: ${JIRA_USERNAME:your-email@example.com}
-  api-token: ${JIRA_API_TOKEN:your-api-token}
+  url: ${JIRA_URL:https://annemiramon.atlassian.net}
+  username: ${JIRA_USERNAME:annemiramon@gmail.com}
+  api-token: ${JIRA_API_TOKEN}
 

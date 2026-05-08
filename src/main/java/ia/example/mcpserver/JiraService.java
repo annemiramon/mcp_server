@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -31,8 +30,8 @@ public class JiraService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public JiraService(RestTemplateBuilder restTemplateBuilder) {
-        this.restTemplate = restTemplateBuilder.build();
+    public JiraService() {
+        this.restTemplate = new RestTemplate();
     }
 
     private HttpHeaders getAuthHeaders() {
@@ -50,12 +49,11 @@ public class JiraService {
         return headers;
     }
 
-    @McpTool(description = "Récupérer ticket sur un projet Jira")
+    @McpTool(name = "recupererTicket", description = "Récupérer ticket sur un projet Jira")
     public String recupererTicket(
-            @McpToolParam(description = "Clé du ticket (ex: PROJ-123)", required = true) String ticketKey) {
+            @McpToolParam(description = "Clé du ticket (ex: PROJ-123)") String ticketKey) {
         try {
             String url = jiraUrl + "/rest/api/3/issue/" + ticketKey;
-            HttpEntity<String> entity = new HttpEntity<>(getAuthHeaders());
 
             String response = restTemplate.getForObject(url, String.class);
             if (response == null) {
@@ -88,11 +86,11 @@ public class JiraService {
         }
     }
 
-    @McpTool(description = "Créer un ticket sur un projet Jira")
+    @McpTool(name = "creerTicket", description = "Créer un ticket sur un projet Jira")
     public String creerTicket(
-            @McpToolParam(description = "Clé du projet Jira (ex: PROJ)", required = true) String projectKey,
-            @McpToolParam(description = "Titre/Résumé du ticket", required = true) String summary,
-            @McpToolParam(description = "Description du ticket", required = true) String description,
+            @McpToolParam(description = "Clé du projet Jira (ex: PROJ)") String projectKey,
+            @McpToolParam(description = "Titre/Résumé du ticket") String summary,
+            @McpToolParam(description = "Description du ticket") String description,
             @McpToolParam(description = "Type de problème (Bug, Task, Story, etc.)", required = false) String issueType) {
         try {
             String url = jiraUrl + "/rest/api/3/issue";
@@ -169,7 +167,7 @@ public class JiraService {
         // Si c'est un objet JSON, essayer d'extraire un texte
         if (node.isObject() && node.has("content")) {
             JsonNode content = node.get("content");
-            if (content.isArray() && content.size() > 0) {
+            if (content.isArray() && !content.isEmpty()) {
                 return extractText(content.get(0));
             }
         }
