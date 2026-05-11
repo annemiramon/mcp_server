@@ -10,9 +10,3 @@ spring:
         name: mon_serveur_mcp
         version: 0.0.1
         stdio: true
-
-jira:
-  url: ${JIRA_URL:https://annemiramon.atlassian.net}
-  username: ${JIRA_USERNAME:annemiramon@gmail.com}
-  api-token: ${JIRA_API_TOKEN}
-

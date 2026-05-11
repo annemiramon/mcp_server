@@ -268,7 +268,7 @@ public class GitService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Accept", "application/vnd.github.v3+json");
             headers.set("User-Agent", "MCP-Server/1.0");
-
+            headers.set("Authorization", "Bearer " + System.getenv("TOKEN_GITHUB"));
             String response = restTemplate.postForObject(url, new HttpEntity<>(json, headers), String.class);
 
             if (response == null) {

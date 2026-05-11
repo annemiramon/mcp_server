@@ -7,26 +7,35 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
+import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
+import uk.org.webcompere.systemstubs.jupiter.SystemStub;
+import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({SystemStubsExtension.class, MockitoExtension.class})
 class JiraServiceTests {
+
+    private JiraService jiraService;
 
     @Mock
     private RestTemplate restTemplate;
 
-    private JiraService jiraService;
+    @SystemStub
+    private EnvironmentVariables variables =
+            new EnvironmentVariables("TOKEN_JIRA", "fake-token", "USERNAME_JIRA", "fake-user");
+
 
     @BeforeEach
     void setUp() {
         jiraService = new JiraService();
         ReflectionTestUtils.setField(jiraService, "restTemplate", restTemplate);
-        ReflectionTestUtils.setField(jiraService, "jiraUrl", "https://test.atlassian.net");
-        ReflectionTestUtils.setField(jiraService, "jiraUsername", "testuser");
-        ReflectionTestUtils.setField(jiraService, "jiraApiToken", "token123");
     }
 
     @Test
@@ -49,7 +58,7 @@ class JiraServiceTests {
         when(restTemplate.getForObject(contains("PROJ-123"), eq(String.class)))
                 .thenReturn(ticketResponse);
 
-        String result = jiraService.recupererTicket("PROJ-123");
+        String result = jiraService.recupererTicket("https://test.atlassian.net", "PROJ-123");
 
         assertNotNull(result);
         assertTrue(result.contains("🎫 Ticket: PROJ-123"));
@@ -75,7 +84,7 @@ class JiraServiceTests {
         when(restTemplate.getForObject(anyString(), eq(String.class)))
                 .thenReturn(ticketResponse);
 
-        String result = jiraService.recupererTicket("PROJ-456");
+        String result = jiraService.recupererTicket("https://test.atlassian.net", "PROJ-456");
 
         assertNotNull(result);
         assertTrue(result.contains("PROJ-456"));
@@ -87,7 +96,7 @@ class JiraServiceTests {
         when(restTemplate.getForObject(anyString(), eq(String.class)))
                 .thenReturn(null);
 
-        String result = jiraService.recupererTicket("INVALID-999");
+        String result = jiraService.recupererTicket("https://test.atlassian.net", "INVALID-999");
 
         assertNotNull(result);
         assertTrue(result.contains("Erreur: Ticket non trouvé"));
@@ -98,7 +107,7 @@ class JiraServiceTests {
         when(restTemplate.getForObject(anyString(), eq(String.class)))
                 .thenThrow(new RuntimeException("Connection failed"));
 
-        String result = jiraService.recupererTicket("PROJ-123");
+        String result = jiraService.recupererTicket("https://test.atlassian.net", "PROJ-123");
 
         assertNotNull(result);
         assertTrue(result.contains("❌ Erreur lors de la récupération du ticket"));
@@ -116,7 +125,7 @@ class JiraServiceTests {
         when(restTemplate.postForObject(anyString(), any(), eq(String.class)))
                 .thenReturn(createResponse);
 
-        String result = jiraService.creerTicket("PROJ", "New bug", "Critical issue", "Bug");
+        String result = jiraService.creerTicket("https://test.atlassian.net", "PROJ", "New bug", "Critical issue", "Bug");
 
         assertNotNull(result);
         assertTrue(result.contains("✅ Ticket créé avec succès"));
@@ -136,7 +145,7 @@ class JiraServiceTests {
         when(restTemplate.postForObject(anyString(), any(), eq(String.class)))
                 .thenReturn(createResponse);
 
-        String result = jiraService.creerTicket("PROJ", "New task", "Some description", null);
+        String result = jiraService.creerTicket("https://test.atlassian.net", "PROJ", "New task", "Some description", null);
 
         assertNotNull(result);
         assertTrue(result.contains("✅ Ticket créé avec succès"));
@@ -148,7 +157,7 @@ class JiraServiceTests {
         when(restTemplate.postForObject(anyString(), any(), eq(String.class)))
                 .thenReturn(null);
 
-        String result = jiraService.creerTicket("PROJ", "Title", "Description", null);
+        String result = jiraService.creerTicket("https://test.atlassian.net", "PROJ", "Title", "Description", null);
 
         assertNotNull(result);
         assertTrue(result.contains("❌ Erreur: Réponse vide du serveur"));
@@ -159,7 +168,7 @@ class JiraServiceTests {
         when(restTemplate.postForObject(anyString(), any(), eq(String.class)))
                 .thenThrow(new RuntimeException("API Error"));
 
-        String result = jiraService.creerTicket("PROJ", "Title", "Description", null);
+        String result = jiraService.creerTicket("https://test.atlassian.net", "PROJ", "Title", "Description", null);
 
         assertNotNull(result);
         assertTrue(result.contains("❌ Erreur lors de la création du ticket"));

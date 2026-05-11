@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -18,15 +17,6 @@ import java.util.Map;
 @Service
 public class JiraService {
 
-    @Value("${jira.url:https://your-instance.atlassian.net}")
-    private String jiraUrl;
-
-    @Value("${jira.username:}")
-    private String jiraUsername;
-
-    @Value("${jira.api-token:}")
-    private String jiraApiToken;
-
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -35,13 +25,15 @@ public class JiraService {
     }
 
     private HttpHeaders getAuthHeaders() {
+        String token = System.getenv("TOKEN_JIRA");
+        String username = System.getenv("USERNAME_JIRA");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Accept", "application/json");
 
-        if (jiraUsername != null && !jiraUsername.isEmpty() &&
-                jiraApiToken != null && !jiraApiToken.isEmpty()) {
-            String auth = jiraUsername + ":" + jiraApiToken;
+        if (username != null && !username.isEmpty() &&
+                token != null && !token.isEmpty()) {
+            String auth = username + ":" + token;
             String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
             headers.set("Authorization", "Basic " + encodedAuth);
         }
@@ -51,9 +43,10 @@ public class JiraService {
 
     @McpTool(name = "recupererTicket", description = "Récupérer ticket sur un projet Jira")
     public String recupererTicket(
+            @McpToolParam(description = "Url du Jira") String urlJira,
             @McpToolParam(description = "Clé du ticket (ex: PROJ-123)") String ticketKey) {
         try {
-            String url = jiraUrl + "/rest/api/3/issue/" + ticketKey;
+            String url = urlJira + "/rest/api/3/issue/" + ticketKey;
 
             String response = restTemplate.getForObject(url, String.class);
             if (response == null) {
@@ -88,12 +81,13 @@ public class JiraService {
 
     @McpTool(name = "creerTicket", description = "Créer un ticket sur un projet Jira")
     public String creerTicket(
+            @McpToolParam(description = "Url du Jira") String urlJira,
             @McpToolParam(description = "Clé du projet Jira (ex: PROJ)") String projectKey,
             @McpToolParam(description = "Titre/Résumé du ticket") String summary,
             @McpToolParam(description = "Description du ticket") String description,
             @McpToolParam(description = "Type de problème (Bug, Task, Story, etc.)", required = false) String issueType) {
         try {
-            String url = jiraUrl + "/rest/api/3/issue";
+            String url = urlJira + "/rest/api/3/issue";
 
             // Déterminer le type de problème
             String type = (issueType != null && !issueType.isEmpty()) ? issueType : "Task";
@@ -130,10 +124,95 @@ public class JiraService {
 
             return String.format("✅ Ticket créé avec succès!\n🔑 Clé: %s\n🌐 URL: %s/browse/%s",
                     newIssueKey,
-                    jiraUrl,
+                    urlJira,
                     newIssueKey);
         } catch (Exception e) {
             return "❌ Erreur lors de la création du ticket: " + e.getMessage();
+        }
+    }
+
+    @McpTool(name = "listerTickets", description = "Récupérer une liste de tickets d'un projet Jira")
+    public String listerTickets(
+            @McpToolParam(description = "Url du Jira") String urlJira,
+            @McpToolParam(description = "Clé du projet Jira (ex: PROJ)") String projectKey,
+            @McpToolParam(description = "Statut optionnel (To Do, In Progress, Done, etc.)", required = false) String status,
+            @McpToolParam(description = "Nombre maximum de tickets à retourner (défaut: 50)", required = false) String maxResults) {
+        try {
+            // Construire la requête JQL
+            StringBuilder jql = new StringBuilder();
+            jql.append("project = ").append(projectKey);
+
+            if (status != null && !status.isEmpty()) {
+                jql.append(" AND status = \"").append(status).append("\"");
+            }
+
+            jql.append(" ORDER BY created DESC");
+
+            // Déterminer le nombre max de résultats
+            int limit = 50;
+            if (maxResults != null && !maxResults.isEmpty()) {
+                try {
+                    limit = Integer.parseInt(maxResults);
+                    if (limit > 100) limit = 100; // Limiter à 100 max
+                } catch (NumberFormatException ignored) {
+                    limit = 50;
+                }
+            }
+
+            // URI encode la requête JQL
+            String encodedJql = java.net.URLEncoder.encode(jql.toString(), java.nio.charset.StandardCharsets.UTF_8);
+            String url = urlJira + "/rest/api/3/search?jql=" + encodedJql + "&maxResults=" + limit;
+
+            String response = restTemplate.getForObject(url, String.class);
+
+            if (response == null) {
+                return "❌ Erreur: Réponse vide du serveur";
+            }
+
+            JsonNode responseNode = objectMapper.readTree(response);
+            JsonNode issues = responseNode.get("issues");
+
+            if (issues == null || !issues.isArray() || issues.size() == 0) {
+                return "📭 Aucun ticket trouvé pour le projet: " + projectKey +
+                        (status != null && !status.isEmpty() ? " avec le statut: " + status : "");
+            }
+
+            StringBuilder result = new StringBuilder();
+            result.append("📋 Liste des tickets du projet ").append(projectKey);
+            if (status != null && !status.isEmpty()) {
+                result.append(" (Statut: ").append(status).append(")");
+            }
+            result.append("\n");
+            result.append("═════════════════════════════════════════\n\n");
+
+            int count = 0;
+            for (JsonNode issue : issues) {
+                count++;
+                String key = issue.get("key").asText();
+                String summary = issue.get("fields").get("summary").asText();
+                String issueStatus = issue.get("fields").get("status").get("name").asText();
+                String issueType = issue.get("fields").get("issuetype").get("name").asText();
+                String priority = issue.get("fields").get("priority") != null && !issue.get("fields").get("priority").isNull()
+                        ? issue.get("fields").get("priority").get("name").asText()
+                        : "Non définie";
+
+                JsonNode assignee = issue.get("fields").get("assignee");
+                String assignedTo = (assignee != null && !assignee.isNull())
+                        ? assignee.get("displayName").asText()
+                        : "Non assigné";
+
+                result.append(count).append(". 🔑 ").append(key).append("\n");
+                result.append("   📝 ").append(summary).append("\n");
+                result.append("   📌 Type: ").append(issueType).append(" | ✅ Statut: ").append(issueStatus).append("\n");
+                result.append("   🎯 Priorité: ").append(priority).append(" | 👤 Assigné à: ").append(assignedTo).append("\n\n");
+            }
+
+            result.append("═════════════════════════════════════════\n");
+            result.append("📊 Total: ").append(issues.size()).append(" ticket(s) trouvé(s)");
+
+            return result.toString();
+        } catch (Exception e) {
+            return "❌ Erreur lors de la récupération des tickets: " + e.getMessage();
         }
     }
 

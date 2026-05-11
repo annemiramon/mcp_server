@@ -6,6 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestTemplate;
+import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
+import uk.org.webcompere.systemstubs.jupiter.SystemStub;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,6 +25,10 @@ class GitServiceTests {
     private RestTemplate restTemplate;
 
     private GitService gitService;
+
+    @SystemStub
+    private EnvironmentVariables variables =
+            new EnvironmentVariables("TOKEN_GITHUB", "fake-token");
 
     @BeforeEach
     void setUp() {
